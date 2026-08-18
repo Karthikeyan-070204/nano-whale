@@ -1,6 +1,5 @@
 # 🐳 Nano Whale - Lightweight Docker TUI
 
-[![Bun](https://img.shields.io/badge/Bun-1.0%2B-black)](https://bun.sh)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-blue)](https://github.com/Vriddhachalam/nano-whale/releases)
 
@@ -8,69 +7,63 @@
   <img src="img/nano_whale_w_bg.png" alt="Nano Whale logo">
 </p>
 
-**Nano Whale** is a blazingly fast, lightweight **Terminal User Interface (TUI)** for managing Docker containers, images, and volumes. Created as a compiled standalone binary, it requires **no external dependencies** (like Python or Node.js) to run on your machine.
+**Nano Whale** is a blazingly fast, lightweight **Terminal User Interface (TUI)** for managing Docker containers, images, and volumes. Completely rewritten from the ground up in native C++, it requires **zero external dependencies** (no Python, no Node.js, no Bun) and compiles to a single ~1MB standalone binary.
 
 ---
 
 ## ✨ Features
 
-- **🚀 Zero Dependencies**: Runs as a single binary executable. No Python/Pip required.
-- **⚡ Blazingly Fast**: Built with Bun and Neo-Blessed for instant startup and low memory usage.
+- **🚀 Zero Dependencies**: Runs as a single native C++ binary executable.
+- **⚡ Blazingly Fast**: Built with `FTXUI` for instant startup, zero interpreter overhead, and ultra-low memory usage.
 - **🖥️ Cross-Platform**: Native support for Windows (WSL2 integration), Linux, and macOS.
 - **⌨️ Keyboard-Driven**: Efficient VIM-style navigation and shortcuts.
 - **🛠️ Power Tools**:
-    - **Instant logs**: Stream logs in full screen (`l`) or pane.
-    - **Exec**: One-key shell access (`t`).
-    - **Stats**: Real-time CPU/Mem usage graphs.
-    - **Batch Actions**: Multi-select containers for bulk start/stop/remove.
+    - **Dashboard**: View running and stopped containers.
+    - **Deep Inspector**: Real-time CPU, Memory, and Network I/O metrics graphing.
+    - **Quick Shell**: Drop into an interactive container shell (`/bin/sh` or `/bin/bash`) instantly (`t`).
+    - **File Explorer**: Browse a container's filesystem and download files directly to your host machine.
+    - **Docker Compose**: Manage `docker-compose.yml` environments directly from the TUI with live log streaming.
+    - **System Prune**: Clean up dangling images, unused containers, and dead volumes.
+    - **True-Color ASCII Art**: Beautiful half-block terminal rendering of the Nano Whale logo.
 
 ---
 
-![Gif](/img/app.gif)
+## 📦 Installation & Build
 
-## 📦 Installation
+You will need `CMake` and a modern C++ compiler (supports C++17).
 
+### Building from Source
 
-### Option 1: One-Line Install (Recommended)
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/Karthikeyan-070204/nano-whale.git
+   cd nano-whale
+   ```
 
-#### Windows (PowerShell)
-```powershell
-irm https://raw.githubusercontent.com/Vriddhachalam/nano-whale/master/install_win.sh | iex
-```
+2. Configure and build using CMake:
+   ```bash
+   cmake -B build
+   cmake --build build
+   ```
 
-> [!NOTE]
-> For the best rendering experience on Windows, it is recommended to use **Git Bash** in **Windows Terminal** app. Avoid using `cmd` or `PowerShell` even in terminal app if possible to prevent rendering artifacts.
+3. Run the compiled binary:
+   ```bash
+   ./build/nano-whale
+   ```
+   *(On Windows using MSVC, the path might be `.\build\Debug\nano-whale.exe` or `.\build\Release\nano-whale.exe`)*
 
-#### Linux / macOS
-```bash
-curl -fsSL https://raw.githubusercontent.com/Vriddhachalam/nano-whale/master/install_linux_mac.sh | sh
-```
-
-### Option 2: Run with Bun
-If you have [Bun](https://bun.sh) installed:
-
-```bash
-# Clone repo
-git clone https://github.com/Vriddhachalam/nano-whale.git
-cd nano-whale
-
-# Install dependencies
-bun init -y | bun install | bun install neo-blessed
-
-# Run
-bun run start
-```
+### Using Pre-built Binaries
+Pre-built binaries for Windows, Linux, and macOS are automatically generated. You can download them directly from the [Releases page](https://github.com/Karthikeyan-070204/nano-whale/releases).
 
 ---
 
 ## 🚀 Usage
 
-```bash
-# If installed via binary
-nano-whale
+Ensure your Docker daemon is running, then simply launch the app:
 
-# If running from source
-bun run start
+```bash
+# If you are in the repository folder:
+./build/nano-whale
 ```
 
 ---
@@ -80,54 +73,35 @@ bun run start
 ### Navigation
 | Key | Action |
 |-----|--------|
-| `Tab` | Switch focus between lists |
-| `↑/↓` | Navigate items |
+| `Tab` / `Left/Right` | Switch between Top Tabs (Dashboard, Compose, Prune, About) |
+| `↑/↓` | Navigate lists and menus |
 | `PageUp/Down` | Scroll lists faster |
-| `Home/End` | Jump to top/bottom |
-
-### Tabs (Context Aware)
-| Key | Action |
-|-----|--------|
-| `Logs` | View Logs tab |
-| `Stats` | View Stats tab |
-| `Env` | View Environment Variables |
-| `Config` | View Inspection/Config |
-| `Top` | View Top Processes |
 
 ### Actions
 | Key | Action |
 |-----|--------|
-| `Enter` | **Inspect** / Expand details |
+| `Enter` | **Inspect** / Expand details / Enter File Explorer |
 | `s` | **Start** container |
 | `x` | **Stop** container |
 | `r` | **Restart** container |
 | `d` | **Delete** (Container/Image/Volume) |
 | `l` | **Fullscreen Logs** (Live stream) |
-| `ctrl + l` | **Fullscreen Logs** (Live stream in new window) |
-| `t` | **Exec** (Enter shell) |
-| `ctrl + t` | **Exec** (Enter shell in new window) |
-| `a` | **Toggle Auto-scroll** (Logs) |
+| `t` | **Exec** (Enter shell inside container) |
 | `F5` | **Manual Refresh** (Reload all data) |
-| `q` | **Quit** |
+| `q` or `Esc` | **Go Back** / **Quit** |
 
 ---
 
 ## 💻 Development
 
-Built using **Bun** and **Neo-Blessed**.
+Built using **C++17** and **[FTXUI](https://github.com/ArthurSonzogni/FTXUI)**.
 
+### Generating ASCII Art
+If you want to update the ASCII art logo in the About tab, you can use the provided Python script:
 ```bash
-# Setup
-git clone https://github.com/Vriddhachalam/nano-whale.git
-cd nano-whale
-bun install
-
-# Dev Run
-bun run dev
-
-# Build Binaries
-bun run build.js
+python generate_ascii.py
 ```
+This will automatically parse the PNG image and regenerate `src/ascii_art.h` using half-block Unicode characters for high-resolution terminal rendering.
 
 ---
 
