@@ -29,14 +29,20 @@
 
 ## 📦 Installation
 
-### Option 1: Download Pre-built Binary (Recommended)
+### Option 1: One-Line Install (Recommended)
 
-1. Go to the [Releases Page](https://github.com/Karthikeyan-070204/nano-whale/releases)
-2. Download the `.zip` or `.tar.gz` for your operating system (Windows, macOS, or Linux).
-3. Extract the file.
-4. Run `nano-whale`!
+#### Windows (PowerShell)
+```powershell
+irm https://raw.githubusercontent.com/Karthikeyan-070204/nano-whale/master/install_win.ps1 | iex
+```
 
-*(If you are on Linux/macOS, you may need to run `chmod +x nano-whale` after extracting to make it executable).*
+> [!NOTE]
+> For the best rendering experience on Windows, it is recommended to use **Git Bash** in **Windows Terminal** app. Avoid using `cmd` or `PowerShell` even in the terminal app if possible to prevent rendering artifacts.
+
+#### Linux / macOS
+```bash
+curl -fsSL https://raw.githubusercontent.com/Karthikeyan-070204/nano-whale/master/install_linux_mac.sh | sh
+```
 
 ### Option 2: Build from Source
 
