@@ -1,68 +1,71 @@
 # 🐳 Nano Whale - Lightweight Docker TUI
 
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-blue)](https://github.com/Vriddhachalam/nano-whale/releases)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-blue)](https://github.com/Karthikeyan-070204/nano-whale/releases)
 
 <p align="center">
   <img src="img/nano_whale_w_bg.png" alt="Nano Whale logo">
 </p>
 
-**Nano Whale** is a blazingly fast, lightweight **Terminal User Interface (TUI)** for managing Docker containers, images, and volumes. Completely rewritten from the ground up in native C++, it requires **zero external dependencies** (no Python, no Node.js, no Bun) and compiles to a single ~1MB standalone binary.
+**Nano Whale** is a blazingly fast, lightweight **Terminal User Interface (TUI)** for managing Docker containers, images, and volumes. Completely rewritten from the ground up in native **C++**, it requires **no external dependencies** (like Python, Node.js, or Bun) to run on your machine.
 
 ---
 
 ## ✨ Features
 
-- **🚀 Zero Dependencies**: Runs as a single native C++ binary executable.
-- **⚡ Blazingly Fast**: Built with `FTXUI` for instant startup, zero interpreter overhead, and ultra-low memory usage.
+- **🚀 Zero Dependencies**: Runs as a single binary executable. No runtimes required.
+- **⚡ Blazingly Fast**: Built with modern C++ and FTXUI for instant startup and virtually zero memory usage.
 - **🖥️ Cross-Platform**: Native support for Windows (WSL2 integration), Linux, and macOS.
 - **⌨️ Keyboard-Driven**: Efficient VIM-style navigation and shortcuts.
 - **🛠️ Power Tools**:
-    - **Dashboard**: View running and stopped containers.
-    - **Deep Inspector**: Real-time CPU, Memory, and Network I/O metrics graphing.
-    - **Quick Shell**: Drop into an interactive container shell (`/bin/sh` or `/bin/bash`) instantly (`t`).
-    - **File Explorer**: Browse a container's filesystem and download files directly to your host machine.
-    - **Docker Compose**: Manage `docker-compose.yml` environments directly from the TUI with live log streaming.
-    - **System Prune**: Clean up dangling images, unused containers, and dead volumes.
-    - **True-Color ASCII Art**: Beautiful half-block terminal rendering of the Nano Whale logo.
+    - **Dashboard**: Quick overview of running and stopped containers.
+    - **Deep Inspector**: Real-time CPU, Mem, and Network usage graphs.
+    - **System Prune**: Safe and easy bulk cleanup for dangling images and unused volumes.
+    - **File Explorer**: Browse your container's filesystem and download files straight to the host.
+    - **Docker Compose**: Full compose integration with live log streaming.
+    - **Instant Shell**: Drop into an interactive shell (`/bin/sh`) instantly.
 
 ---
 
-## 📦 Installation & Build
+## 📦 Installation
 
-You will need `CMake` and a modern C++ compiler (supports C++17).
+### Option 1: Download Pre-built Binary (Recommended)
 
-### Building from Source
+1. Go to the [Releases Page](https://github.com/Karthikeyan-070204/nano-whale/releases)
+2. Download the `.zip` or `.tar.gz` for your operating system (Windows, macOS, or Linux).
+3. Extract the file.
+4. Run `nano-whale`!
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/Karthikeyan-070204/nano-whale.git
-   cd nano-whale
-   ```
+*(If you are on Linux/macOS, you may need to run `chmod +x nano-whale` after extracting to make it executable).*
 
-2. Configure and build using CMake:
-   ```bash
-   cmake -B build
-   cmake --build build
-   ```
+### Option 2: Build from Source
 
-3. Run the compiled binary:
-   ```bash
-   ./build/nano-whale
-   ```
-   *(On Windows using MSVC, the path might be `.\build\Debug\nano-whale.exe` or `.\build\Release\nano-whale.exe`)*
+If you have `CMake` and a modern C++ compiler installed:
 
-### Using Pre-built Binaries
-Pre-built binaries for Windows, Linux, and macOS are automatically generated. You can download them directly from the [Releases page](https://github.com/Karthikeyan-070204/nano-whale/releases).
+```bash
+# Clone repo
+git clone https://github.com/Karthikeyan-070204/nano-whale.git
+cd nano-whale
+
+# Configure and Build
+cmake -B build
+cmake --build build
+
+# Run
+./build/nano-whale
+```
 
 ---
 
 ## 🚀 Usage
 
-Ensure your Docker daemon is running, then simply launch the app:
+Ensure your Docker daemon is running, then run:
 
 ```bash
-# If you are in the repository folder:
+# If running the downloaded binary
+./nano-whale
+
+# If running from source build
 ./build/nano-whale
 ```
 
@@ -73,14 +76,14 @@ Ensure your Docker daemon is running, then simply launch the app:
 ### Navigation
 | Key | Action |
 |-----|--------|
-| `Tab` / `Left/Right` | Switch between Top Tabs (Dashboard, Compose, Prune, About) |
+| `Tab` / `Left/Right` | Switch between Top Tabs |
 | `↑/↓` | Navigate lists and menus |
 | `PageUp/Down` | Scroll lists faster |
 
 ### Actions
 | Key | Action |
 |-----|--------|
-| `Enter` | **Inspect** / Expand details / Enter File Explorer |
+| `Enter` | **Inspect** / Expand details |
 | `s` | **Start** container |
 | `x` | **Stop** container |
 | `r` | **Restart** container |
@@ -92,19 +95,6 @@ Ensure your Docker daemon is running, then simply launch the app:
 
 ---
 
-## 💻 Development
-
-Built using **C++17** and **[FTXUI](https://github.com/ArthurSonzogni/FTXUI)**.
-
-### Generating ASCII Art
-If you want to update the ASCII art logo in the About tab, you can use the provided Python script:
-```bash
-python generate_ascii.py
-```
-This will automatically parse the PNG image and regenerate `src/ascii_art.h` using half-block Unicode characters for high-resolution terminal rendering.
-
----
-
 ## 🤝 Contributing
 Contributions are welcome! Please submit a Pull Request.
 
@@ -112,5 +102,5 @@ Contributions are welcome! Please submit a Pull Request.
 MIT License - see [LICENSE](LICENSE) for details.
 
 ---
-**Made with ❤️ by Vriddhachalam S**
+**Made with ❤️ by Vriddhachalam S & Karthikeyan**
 *Swim fast, stay light! 🐳*
