@@ -51,7 +51,29 @@ std::string get_hostname() {
 }
 
 std::string get_docker_cmd() {
-    return "docker";
+    static std::string cmd = "";
+    if (!cmd.empty()) {
+        return cmd;
+    }
+
+    if (const char* env_p = std::getenv("DOCKER_CMD")) {
+        cmd = env_p;
+        return cmd;
+    }
+
+#ifdef _WIN32
+    if (std::system("docker --version >nul 2>&1") == 0) {
+        cmd = "docker";
+    } else if (std::system("wsl docker --version >nul 2>&1") == 0) {
+        cmd = "wsl docker";
+    } else {
+        cmd = "docker"; // Fallback
+    }
+#else
+    cmd = "docker";
+#endif
+
+    return cmd;
 }
 
 std::optional<std::string> exec_command(const std::string& cmd, int /*timeout_ms*/) {
