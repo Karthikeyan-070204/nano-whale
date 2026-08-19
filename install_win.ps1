@@ -14,8 +14,9 @@ Expand-Archive -Path $zipPath -DestinationPath $installDir -Force
 
 $exePath = "C:\Program Files\nano-whale"
 $machinePath = [System.Environment]::GetEnvironmentVariable("Path", "Machine")
+$pathArray = $machinePath -split ';'
 
-if ($machinePath -notlike "*$exePath*") {
+if ($pathArray -notcontains $exePath) {
     Write-Host "Adding to PATH..."
     [System.Environment]::SetEnvironmentVariable(
         "Path",
