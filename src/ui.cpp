@@ -551,11 +551,6 @@ void run(AppState &state) {
 
   // We use a CatchEvent + Renderer approach for the full layout.
 
-  // Track last refresh times
-  auto last_container_refresh = std::chrono::steady_clock::now();
-  auto last_misc_refresh = std::chrono::steady_clock::now();
-  auto last_logs_refresh = std::chrono::steady_clock::now();
-
   // ── Notification timer ───────────────────────────────────────────────
   auto notification_time = std::chrono::steady_clock::now();
 
@@ -571,39 +566,8 @@ void run(AppState &state) {
 
   // ── Build the component ──────────────────────────────────────────────
   auto component = Renderer([&] {
+    std::lock_guard<std::mutex> lock(state.mtx);
     auto now = std::chrono::steady_clock::now();
-
-    // Auto-refresh containers + stats every 3 seconds
-    auto since_container = std::chrono::duration_cast<std::chrono::seconds>(
-                               now - last_container_refresh)
-                               .count();
-    if (since_container >= 3) {
-      refresh_containers(state);
-      last_container_refresh = now;
-    }
-
-    // Auto-refresh misc every 15 seconds
-    auto since_misc = std::chrono::duration_cast<std::chrono::seconds>(
-                          now - last_misc_refresh)
-                          .count();
-    if (since_misc >= 15) {
-      refresh_misc(state);
-      last_misc_refresh = now;
-    }
-
-    // Auto-refresh logs every 2 seconds when on logs tab
-    if (state.current_tab == Tab::Logs) {
-      auto since_logs = std::chrono::duration_cast<std::chrono::seconds>(
-                            now - last_logs_refresh)
-                            .count();
-      if (since_logs >= 2) {
-        const Container *c = get_selected_container(state);
-        if (c) {
-          state.logs_content = docker::get_logs(c->name, "100");
-        }
-        last_logs_refresh = now;
-      }
-    }
 
     // Clear notification after 2 seconds
     if (!state.notification.empty()) {
@@ -1567,11 +1531,79 @@ void run(AppState &state) {
     return false;
   });
 
-  // Run the screen with a 1-second loop for auto-refresh
+  // Run the screen with a 500ms loop for auto-refresh and background data fetching
   std::thread refresh_thread([&] {
+    auto last_container_refresh = std::chrono::steady_clock::now();
+    auto last_misc_refresh = std::chrono::steady_clock::now();
+    auto last_logs_refresh = std::chrono::steady_clock::now();
+    auto last_compose_refresh = std::chrono::steady_clock::now();
+
     while (state.running) {
-      std::this_thread::sleep_for(std::chrono::seconds(1));
-      if (state.running) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(500));
+      if (!state.running) break;
+
+      auto now = std::chrono::steady_clock::now();
+      bool needs_redraw = false;
+
+      // Auto-refresh containers + stats every 3 seconds
+      if (std::chrono::duration_cast<std::chrono::seconds>(now - last_container_refresh).count() >= 3) {
+        refresh_containers(state);
+        last_container_refresh = now;
+        needs_redraw = true;
+      }
+
+      // Auto-refresh misc every 15 seconds
+      if (std::chrono::duration_cast<std::chrono::seconds>(now - last_misc_refresh).count() >= 15) {
+        refresh_misc(state);
+        last_misc_refresh = now;
+        needs_redraw = true;
+      }
+
+      // Auto-refresh logs every 2 seconds when on logs tab
+      bool on_logs_tab = false;
+      {
+          std::lock_guard<std::mutex> lock(state.mtx);
+          on_logs_tab = (state.current_tab == Tab::Logs);
+      }
+      
+      if (on_logs_tab) {
+        if (std::chrono::duration_cast<std::chrono::seconds>(now - last_logs_refresh).count() >= 2) {
+          std::string c_name;
+          {
+              std::lock_guard<std::mutex> lock(state.mtx);
+              const Container *c = get_selected_container(state);
+              if (c) c_name = c->name;
+          }
+          if (!c_name.empty()) {
+            std::string logs = docker::get_logs(c_name, "100");
+            std::lock_guard<std::mutex> lock(state.mtx);
+            state.logs_content = logs;
+          }
+          last_logs_refresh = now;
+          needs_redraw = true;
+        }
+      }
+
+      // Auto-refresh compose logs every 3 seconds when on compose tab
+      bool on_compose_tab = false;
+      bool compose_avail = false;
+      {
+          std::lock_guard<std::mutex> lock(state.mtx);
+          on_compose_tab = (state.current_tab == Tab::Compose);
+          compose_avail = state.compose_available;
+      }
+
+      if (on_compose_tab && compose_avail) {
+        if (std::chrono::duration_cast<std::chrono::seconds>(now - last_compose_refresh).count() >= 3) {
+          std::string logs = docker::get_compose_logs();
+          std::lock_guard<std::mutex> lock(state.mtx);
+          state.compose_logs = logs;
+          last_compose_refresh = now;
+          needs_redraw = true;
+        }
+      }
+
+      if (needs_redraw) {
         screen.PostEvent(Event::Custom);
       }
     }
