@@ -1,6 +1,6 @@
 # nano-whale
 
-Lightweight Docker TUI built with **Rust**, **ratatui**, **tokio**, and **bollard**.
+Lightweight Docker TUI built **exclusively** with **Rust** (100% Rust-only project). Powered by **ratatui**, **tokio**, and **bollard**.
 
 ## Installation
 
