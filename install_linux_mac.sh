@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-REPO="karthikeyan-070204/nano-whale"
+REPO="Vriddhachalam/nano-whale"
 BIN_NAME="nano-whale"
 
 # Determine OS

@@ -1,5 +1,5 @@
 $ErrorActionPreference = "Stop"
-$Repo = "karthikeyan-070204/nano-whale"
+$Repo = "Vriddhachalam/nano-whale"
 $BinName = "nano-whale.exe"
 $AssetName = "nano-whale-windows-x86_64.exe"
 

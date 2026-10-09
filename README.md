@@ -2,6 +2,26 @@
 
 Lightweight Docker TUI built with **Rust**, **ratatui**, **tokio**, and **bollard**.
 
+## Installation
+
+Option 1: One-Line Install (Recommended)
+
+### Windows (PowerShell)
+
+```powershell
+irm https://raw.githubusercontent.com/Vriddhachalam/nano-whale/master/install_win.sh | iex
+```
+
+> **Note**
+> For the best rendering experience on Windows, it is recommended to use **Git Bash** in **Windows Terminal** app.
+> Avoid using `cmd` or `PowerShell` even in terminal app if possible to prevent rendering artifacts.
+
+### Linux / macOS
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Vriddhachalam/nano-whale/master/install_linux_mac.sh | sh
+```
+
 ## Requirements
 
 - Rust 1.70+
