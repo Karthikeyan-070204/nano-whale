@@ -1,116 +1,110 @@
 name: Build Standalone Binaries
 
 on:
-  workflow_dispatch:
-  release:
-    types: [published]
+  push:
+    branches:
+      - rust
 
 jobs:
-  # ----------------------------------------
-  # Job 1: Create manual release (only once)
-  # ----------------------------------------
-  create_release:
+  bump_version:
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch'
+    if: "!startsWith(github.event.head_commit.message, 'chore(release):')"
     outputs:
-      upload_url: ${{ steps.manual_release.outputs.upload_url }}
+      new_version: ${{ steps.bump.outputs.NEW_VERSION }}
+    permissions:
+      contents: write
     steps:
-      - name: Create manual release
-        id: manual_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.REPO_TOKEN }}
+      - name: Checkout code
+        uses: actions/checkout@v4
         with:
-          tag_name: manual-${{ github.run_id }}
-          release_name: Manual Build - ${{ github.run_id }}
-          body: Automatic manual build generated from workflow_dispatch.
-          draft: false
-          prerelease: true
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-  # ----------------------------------------
-  # Job 2: Build binaries for all OSes
-  # ----------------------------------------
+      - name: Bump Version
+        id: bump
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          
+          # Extract current version from Cargo.toml
+          current_version=$(grep -m 1 '^version = ' Cargo.toml | sed 's/version = "\(.*\)"/\1/')
+          
+          # Increment the patch version
+          IFS='.' read -r major minor patch <<< "$current_version"
+          new_patch=$((patch + 1))
+          new_version="${major}.${minor}.${new_patch}"
+          
+          echo "Bumping version from $current_version to $new_version"
+          sed -i "0,/version = \"$current_version\"/s//version = \"$new_version\"/" Cargo.toml
+          
+          git add Cargo.toml
+          git commit -m "chore(release): bump version to $new_version"
+          git push
+          
+          echo "NEW_VERSION=$new_version" >> $GITHUB_OUTPUT
+
   build:
-    needs: [create_release]
-    runs-on: ubuntu-latest
-    if: always()
+    needs: bump_version
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact_name: nano-whale
+            asset_name: nano-whale-linux-x86_64
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            artifact_name: nano-whale
+            asset_name: nano-whale-macos-x86_64
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            artifact_name: nano-whale
+            asset_name: nano-whale-macos-arm64
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact_name: nano-whale.exe
+            asset_name: nano-whale-windows-x86_64.exe
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
         with:
-          bun-version: latest
+          ref: rust # Pull the newly bumped commit from the rust branch
+          
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+          
+      - name: Build Target
+        run: cargo build --release --target ${{ matrix.target }}
+        
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset_name }}
+          path: target/${{ matrix.target }}/release/${{ matrix.artifact_name }}
 
-      - name: Install dependencies
-        run: bun init -y | bun install | bun install neo-blessed
-
-      - name: Build Releases
-        run: bun run build.js
-
-      - name: Archive Releases
+  release:
+    needs: [bump_version, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          
+      - name: Prepare Assets
         run: |
-          cd releases
-          # Windows
-          if [ -d "windows-x64" ]; then
-            zip -r nano-whale-windows-x64.zip windows-x64/
-          fi
-          # Linux
-          if [ -d "linux-x64" ]; then
-            tar -czf nano-whale-linux-x64.tar.gz linux-x64/
-          fi
-          # macOS x64
-          if [ -d "macos-x64" ]; then
-            tar -czf nano-whale-macos-x64.tar.gz macos-x64/
-          fi
-           # macOS arm64
-          if [ -d "macos-arm64" ]; then
-            tar -czf nano-whale-macos-arm64.tar.gz macos-arm64/
-          fi
-          ls -la
-        shell: bash
-
-      # -------------------------------------------------------
-      # Upload to release (Manual or Published)
-      # -------------------------------------------------------
-      - name: Upload Windows
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.REPO_TOKEN }}
+          mkdir release_assets
+          find artifacts -type f -exec mv {} release_assets/ \;
+          
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
         with:
-          upload_url: ${{ github.event_name == 'workflow_dispatch' && needs.create_release.outputs.upload_url || github.event.release.upload_url }}
-          asset_path: ./releases/nano-whale-windows-x64.zip
-          asset_name: nano-whale-windows-x64.zip
-          asset_content_type: application/zip
-
-      - name: Upload Linux
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.REPO_TOKEN }}
-        with:
-          upload_url: ${{ github.event_name == 'workflow_dispatch' && needs.create_release.outputs.upload_url || github.event.release.upload_url }}
-          asset_path: ./releases/nano-whale-linux-x64.tar.gz
-          asset_name: nano-whale-linux-x64.tar.gz
-          asset_content_type: application/gzip
-
-      - name: Upload macOS x64
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.REPO_TOKEN }}
-        with:
-          upload_url: ${{ github.event_name == 'workflow_dispatch' && needs.create_release.outputs.upload_url || github.event.release.upload_url }}
-          asset_path: ./releases/nano-whale-macos-x64.tar.gz
-          asset_name: nano-whale-macos-x64.tar.gz
-          asset_content_type: application/gzip
-      
-      - name: Upload macOS arm64
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.REPO_TOKEN }}
-        with:
-          upload_url: ${{ github.event_name == 'workflow_dispatch' && needs.create_release.outputs.upload_url || github.event.release.upload_url }}
-          asset_path: ./releases/nano-whale-macos-arm64.tar.gz
-          asset_name: nano-whale-macos-arm64.tar.gz
-          asset_content_type: application/gzip
+          tag_name: v${{ needs.bump_version.outputs.new_version }}
+          name: Release v${{ needs.bump_version.outputs.new_version }}
+          files: release_assets/*
+          generate_release_notes: true
