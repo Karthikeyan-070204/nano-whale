@@ -2,6 +2,17 @@
 
 Lightweight Docker TUI built **exclusively** with **Rust** (100% Rust-only project). Powered by **ratatui**, **tokio**, and **bollard**.
 
+## Download
+
+Grab the latest binary for your platform from the [Releases](https://github.com/Vriddhachalam/nano-whale/releases/latest) page:
+
+| Platform | Binary |
+|----------|--------|
+| Linux (x86_64) | [`nano-whale-linux-x86_64`](https://github.com/Vriddhachalam/nano-whale/releases/latest/download/nano-whale-linux-x86_64) |
+| macOS (Intel) | [`nano-whale-macos-x86_64`](https://github.com/Vriddhachalam/nano-whale/releases/latest/download/nano-whale-macos-x86_64) |
+| macOS (Apple Silicon) | [`nano-whale-macos-arm64`](https://github.com/Vriddhachalam/nano-whale/releases/latest/download/nano-whale-macos-arm64) |
+| Windows (x86_64) | [`nano-whale-windows-x86_64.exe`](https://github.com/Vriddhachalam/nano-whale/releases/latest/download/nano-whale-windows-x86_64.exe) |
+
 ## Installation
 
 Option 1: One-Line Install (Recommended)
@@ -9,7 +20,7 @@ Option 1: One-Line Install (Recommended)
 ### Windows (PowerShell)
 
 ```powershell
-irm https://raw.githubusercontent.com/Vriddhachalam/nano-whale/rust/install_win.sh | iex
+irm https://raw.githubusercontent.com/Vriddhachalam/nano-whale/rust/install_win.ps1 | iex
 ```
 
 > **Note**
@@ -26,7 +37,7 @@ curl -fsSL https://raw.githubusercontent.com/Vriddhachalam/nano-whale/rust/insta
 
 ### Windows (PowerShell)
 ```powershell
-irm https://raw.githubusercontent.com/Vriddhachalam/nano-whale/rust/uninstall_win.sh | iex
+irm https://raw.githubusercontent.com/Vriddhachalam/nano-whale/rust/uninstall_win.ps1 | iex
 ```
 
 ### Linux / macOS
