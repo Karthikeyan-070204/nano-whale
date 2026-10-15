@@ -47,7 +47,8 @@ jobs:
           
           git add Cargo.toml
           git commit -m "chore(release): bump version to $new_version"
-          git push origin rust
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+          git push origin rust || echo "::warning::Could not push Cargo.toml commit to rust branch (check Workflow permissions or branch protection). Continuing build with version $new_version."
           
           echo "NEW_VERSION=$new_version" >> $GITHUB_OUTPUT
 
