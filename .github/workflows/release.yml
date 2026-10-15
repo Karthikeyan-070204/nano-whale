@@ -1,13 +1,52 @@
-name: Release
+name: Build & Release
 
 on:
-  push:
+  pull_request:
+    types: [closed]
     branches:
       - rust
 
 jobs:
+  bump_version:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true && !startsWith(github.event.pull_request.title, 'chore(release):')
+    outputs:
+      new_version: ${{ steps.bump.outputs.NEW_VERSION }}
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: rust
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Bump Version
+        id: bump
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          
+          # Extract current version from Cargo.toml
+          current_version=$(grep -m 1 '^version = ' Cargo.toml | sed 's/version = "\(.*\)"/\1/')
+          
+          # Increment the patch version
+          IFS='.' read -r major minor patch <<< "$current_version"
+          new_patch=$((patch + 1))
+          new_version="${major}.${minor}.${new_patch}"
+          
+          echo "Bumping version from $current_version to $new_version"
+          sed -i "0,/version = \"$current_version\"/s//version = \"$new_version\"/" Cargo.toml
+          
+          git add Cargo.toml
+          git commit -m "chore(release): bump version to $new_version"
+          git push
+          
+          echo "NEW_VERSION=$new_version" >> $GITHUB_OUTPUT
+
   build:
     name: Build for ${{ matrix.os }}
+    needs: bump_version
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -30,8 +69,11 @@ jobs:
             asset_name: nano-whale-windows-x86_64.exe
 
     steps:
-      - uses: actions/checkout@v4
-      
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: rust
+
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -48,7 +90,7 @@ jobs:
 
   release:
     name: Create GitHub Release
-    needs: build
+    needs: [bump_version, build]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -67,7 +109,7 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: build-${{ github.run_number }}
-          name: Continuous Build ${{ github.run_number }}
+          tag_name: v${{ needs.bump_version.outputs.new_version }}
+          name: Release v${{ needs.bump_version.outputs.new_version }}
           files: release_assets/*
           generate_release_notes: true
