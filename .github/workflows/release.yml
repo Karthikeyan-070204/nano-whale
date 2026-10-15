@@ -7,6 +7,9 @@ on:
       - rust
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   bump_version:
     runs-on: ubuntu-latest
@@ -23,6 +26,7 @@ jobs:
         with:
           ref: rust
           token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
 
       - name: Bump Version
         id: bump
@@ -43,7 +47,7 @@ jobs:
           
           git add Cargo.toml
           git commit -m "chore(release): bump version to $new_version"
-          git push
+          git push origin rust
           
           echo "NEW_VERSION=$new_version" >> $GITHUB_OUTPUT
 
@@ -116,3 +120,5 @@ jobs:
           name: Release v${{ needs.bump_version.outputs.new_version }}
           files: release_assets/*
           generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
