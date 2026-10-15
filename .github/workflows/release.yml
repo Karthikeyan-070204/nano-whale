@@ -5,11 +5,14 @@ on:
     types: [closed]
     branches:
       - rust
+  workflow_dispatch:
 
 jobs:
   bump_version:
     runs-on: ubuntu-latest
-    if: github.event.pull_request.merged == true && !startsWith(github.event.pull_request.title, 'chore(release):')
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.merged == true && !startsWith(github.event.pull_request.title, 'chore(release):'))
     outputs:
       new_version: ${{ steps.bump.outputs.NEW_VERSION }}
     permissions:
