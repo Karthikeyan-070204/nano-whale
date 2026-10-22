@@ -32,7 +32,6 @@ jobs:
       (github.event_name == 'pull_request' && github.event.pull_request.merged == true && !startsWith(github.event.pull_request.title, 'chore(release):'))
     outputs:
       new_version: ${{ steps.bump.outputs.NEW_VERSION }}
-      commit_sha: ${{ steps.bump.outputs.COMMIT_SHA }}
     permissions:
       contents: write
     steps:
@@ -89,16 +88,9 @@ jobs:
           git add Cargo.toml Cargo.lock
           git commit -m "chore(release): bump version to $new_version [skip ci]"
           git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
-          
-          if git push origin "$TARGET_BRANCH"; then
-            commit_sha=$(git rev-parse HEAD)
-          else
-            echo "::warning::Could not push Cargo.toml commit to $TARGET_BRANCH branch (check Workflow permissions or branch protection). Continuing with local commit."
-            commit_sha=$(git rev-parse HEAD)
-          fi
+          git push origin "$TARGET_BRANCH" || echo "::warning::Could not push commit to $TARGET_BRANCH branch."
           
           echo "NEW_VERSION=$new_version" >> $GITHUB_OUTPUT
-          echo "COMMIT_SHA=$commit_sha" >> $GITHUB_OUTPUT
 
   build:
     name: Build for ${{ matrix.os }}
@@ -128,8 +120,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          ref: ${{ needs.bump_version.outputs.commit_sha || github.event.pull_request.base.ref || github.ref_name }}
+          ref: ${{ github.event.pull_request.base.ref || github.ref_name }}
           fetch-depth: 0
+
+      - name: Pull latest commit
+        run: git pull origin ${{ github.event.pull_request.base.ref || github.ref_name }}
+        shell: bash
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -168,7 +164,7 @@ jobs:
         with:
           tag_name: v${{ needs.bump_version.outputs.new_version }}
           name: Release v${{ needs.bump_version.outputs.new_version }}
-          target_commitish: ${{ needs.bump_version.outputs.commit_sha }}
+          target_commitish: ${{ github.event.pull_request.base.ref || github.ref_name }}
           files: release_assets/*
           generate_release_notes: true
         env:
