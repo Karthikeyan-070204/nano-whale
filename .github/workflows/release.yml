@@ -1,11 +1,13 @@
 name: Build & Release
 
 on:
+  push:
+    branches:
+      - rust
   pull_request:
     types: [closed]
     branches:
       - rust
-      - master
   workflow_dispatch:
     inputs:
       bump_type:
@@ -25,8 +27,9 @@ jobs:
   bump_version:
     runs-on: ubuntu-latest
     if: >-
-      github.event_name == 'workflow_dispatch' ||
-      (github.event.pull_request.merged == true && !startsWith(github.event.pull_request.title, 'chore(release):'))
+      (github.event_name == 'workflow_dispatch') ||
+      (github.event_name == 'push' && !startsWith(github.event.head_commit.message, 'chore(release):') && !contains(github.event.head_commit.message, '[skip ci]')) ||
+      (github.event_name == 'pull_request' && github.event.pull_request.merged == true && !startsWith(github.event.pull_request.title, 'chore(release):'))
     outputs:
       new_version: ${{ steps.bump.outputs.NEW_VERSION }}
       commit_sha: ${{ steps.bump.outputs.COMMIT_SHA }}
@@ -84,7 +87,7 @@ jobs:
           cargo check --quiet 2>/dev/null || true
           
           git add Cargo.toml Cargo.lock
-          git commit -m "chore(release): bump version to $new_version"
+          git commit -m "chore(release): bump version to $new_version [skip ci]"
           git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
           
           if git push origin "$TARGET_BRANCH"; then
