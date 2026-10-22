@@ -5,9 +5,14 @@ $AssetName = "nano-whale-windows-x86_64.exe"
 
 Write-Host "Fetching latest release for $AssetName..."
 $ReleaseUrl = "https://api.github.com/repos/$Repo/releases/latest"
-$Release = Invoke-RestMethod -Uri $ReleaseUrl
+$Headers = @{ "User-Agent" = "nano-whale-installer" }
+$Release = Invoke-RestMethod -Uri $ReleaseUrl -Headers $Headers
 
 $Asset = $Release.assets | Where-Object { $_.name -eq $AssetName }
+if (-not $Asset) {
+    $Asset = $Release.assets | Where-Object { $_.name -like "*windows*.exe" } | Select-Object -First 1
+}
+
 if (-not $Asset) {
     Write-Error "Could not find a release asset for Windows ($AssetName). Make sure a release exists in the repository."
     exit 1
