@@ -139,6 +139,20 @@ Remove-Item -Path $TempPath -Force -ErrorAction SilentlyContinue
 
 Write-Host "Installation complete! $InstallPath has been created."
 
+# Try updating C:\Program Files\nano-whale if it exists and is writable
+$ProgramFilesDir = "$env:ProgramFiles\nano-whale"
+$ProgramFilesExe = Join-Path $ProgramFilesDir $BinName
+$updatedProgramFiles = $false
+if (Test-Path $ProgramFilesExe) {
+    try {
+        Copy-Item -Path $InstallPath -Destination $ProgramFilesExe -Force -ErrorAction Stop
+        $updatedProgramFiles = $true
+        Write-Host "Also updated existing binary at $ProgramFilesExe to the Rust release." -ForegroundColor Green
+    } catch {
+        # Not writable without elevated permissions
+    }
+}
+
 $UserPath = [Environment]::GetEnvironmentVariable("PATH", "User")
 if ($UserPath -notmatch [regex]::Escape($InstallDir)) {
     Write-Host "Adding $InstallDir to your PATH..."
@@ -148,4 +162,17 @@ if ($UserPath -notmatch [regex]::Escape($InstallDir)) {
     Write-Host "PATH updated. Please restart your terminal for it to take full effect."
 }
 
-Write-Host "Run 'nano-whale' to start."
+if ((Test-Path $ProgramFilesExe) -and (-not $updatedProgramFiles)) {
+    Write-Host ""
+    Write-Host "[WARNING] An older nano-whale executable exists at:" -ForegroundColor Yellow
+    Write-Host "  $ProgramFilesExe" -ForegroundColor Yellow
+    Write-Host "Windows runs this file first because System PATH takes priority over User PATH." -ForegroundColor Yellow
+    Write-Host "To make 'nano-whale' run the Rust edition, run in Administrator PowerShell:" -ForegroundColor Cyan
+    Write-Host "  Copy-Item `"$InstallPath`" `"$ProgramFilesExe`" -Force" -ForegroundColor Cyan
+    Write-Host "Or delete the old one:" -ForegroundColor Cyan
+    Write-Host "  Remove-Item -Force `"$ProgramFilesExe`"" -ForegroundColor Cyan
+    Write-Host "Or launch the Rust version directly with:" -ForegroundColor Green
+    Write-Host "  & `"$InstallPath`"" -ForegroundColor Green
+} else {
+    Write-Host "Run 'nano-whale' to start."
+}
