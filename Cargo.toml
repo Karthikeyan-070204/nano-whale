@@ -1,6 +1,6 @@
 [package]
 name = "nano-whale"
-version = "2.0.4"
+version = "2.0.5"
 edition = "2021"
 description = "Lightweight Docker TUI — Rust edition"
 license = "MIT"
