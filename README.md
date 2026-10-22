@@ -20,7 +20,7 @@ Option 1: One-Line Install (Recommended)
 ### Windows (PowerShell)
 
 ```powershell
-irm https://raw.githubusercontent.com/Vriddhachalam/nano-whale/rust/install_win.ps1 | iex
+irm https://raw.githubusercontent.com/Vriddhachalam/nano-whale/rust/install_win.sh | iex
 ```
 
 > **Note**
@@ -37,7 +37,7 @@ curl -fsSL https://raw.githubusercontent.com/Vriddhachalam/nano-whale/rust/insta
 
 ### Windows (PowerShell)
 ```powershell
-irm https://raw.githubusercontent.com/Vriddhachalam/nano-whale/rust/uninstall_win.ps1 | iex
+irm https://raw.githubusercontent.com/Vriddhachalam/nano-whale/rust/uninstall_win.sh | iex
 ```
 
 ### Linux / macOS
