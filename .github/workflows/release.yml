@@ -135,11 +135,15 @@ jobs:
       - name: Build Target
         run: cargo build --release --target ${{ matrix.target }}
 
+      - name: Stage platform asset
+        run: cp target/${{ matrix.target }}/release/${{ matrix.artifact_name }} target/${{ matrix.target }}/release/${{ matrix.asset_name }}
+        shell: bash
+
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.asset_name }}
-          path: target/${{ matrix.target }}/release/${{ matrix.artifact_name }}
+          path: target/${{ matrix.target }}/release/${{ matrix.asset_name }}
 
   release:
     name: Create GitHub Release

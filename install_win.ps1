@@ -15,10 +15,10 @@ $Release = try {
 
 $Asset = $null
 if ($Release -and $Release.assets) {
-    $Asset = $Release.assets | Where-Object { $_.name -eq $AssetName } | Select-Object -First 1
+    $Asset = $Release.assets | Where-Object { $_.name -eq $AssetName -or $_.name -eq "nano-whale.exe" -or $_.name -like "*windows*.exe" } | Select-Object -First 1
 }
 
-# If not found in 'latest', check recent releases specifically for the Rust asset
+# If not found in 'latest', check recent releases
 if (-not $Asset) {
     $Releases = try {
         Invoke-RestMethod -Uri "https://api.github.com/repos/$Repo/releases" -Headers $Headers
@@ -26,17 +26,17 @@ if (-not $Asset) {
         @()
     }
     foreach ($rel in $Releases) {
-        $found = $rel.assets | Where-Object { $_.name -eq $AssetName } | Select-Object -First 1
+        $found = $rel.assets | Where-Object { $_.name -eq $AssetName -or $_.name -eq "nano-whale.exe" -or $_.name -like "*windows*.exe" } | Select-Object -First 1
         if ($found) {
             $Asset = $found
-            Write-Host "Found $AssetName in release $($rel.tag_name)."
+            Write-Host "Found Windows asset in release $($rel.tag_name)."
             break
         }
     }
 }
 
 if (-not $Asset) {
-    Write-Error "Could not find a release asset for Windows ($AssetName) in $Repo.`n`nThe Rust release workflow has not yet run to publish the binary in GitHub Releases.`nOnce your PR is merged into the 'rust' branch on $Repo (or triggered via GitHub Actions), the release will be published and this installer will download it."
+    Write-Error "Could not find a release asset for Windows in $Repo.`n`nOnce the release workflow runs to publish the binary in GitHub Releases, this installer will download it."
     exit 1
 }
 
