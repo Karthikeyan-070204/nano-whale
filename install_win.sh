@@ -1,38 +1,32 @@
-$ErrorActionPreference = "Stop"
-$Repo = "Vriddhachalam/nano-whale"
-$BinName = "nano-whale.exe"
-$AssetName = "nano-whale-windows-x86_64.exe"
+#!/bin/sh
+set -e
 
-Write-Host "Fetching latest release for $AssetName..."
-$ReleaseUrl = "https://api.github.com/repos/$Repo/releases/latest"
-$Release = Invoke-RestMethod -Uri $ReleaseUrl
+REPO="Vriddhachalam/nano-whale"
+BIN_NAME="nano-whale.exe"
+ASSET_NAME="nano-whale-windows-x86_64.exe"
 
-$Asset = $Release.assets | Where-Object { $_.name -eq $AssetName }
-if (-not $Asset) {
-    Write-Error "Could not find a release asset for Windows ($AssetName). Make sure a release exists in the repository."
+echo "Fetching latest release for ${ASSET_NAME}..."
+LATEST_URL=$(curl -s "https://api.github.com/repos/${REPO}/releases/latest" | grep -Eo "\"browser_download_url\": \"[^\"]*${ASSET_NAME}\"" | cut -d '"' -f 4 | head -n 1)
+
+if [ -z "$LATEST_URL" ]; then
+    echo "Could not find a release asset for Windows (${ASSET_NAME})."
+    echo "Make sure a release exists in the repository."
     exit 1
-}
+fi
 
-$DownloadUrl = $Asset.browser_download_url
-Write-Host "Downloading $DownloadUrl..."
+echo "Downloading ${LATEST_URL}..."
 
-$InstallDir = "$env:USERPROFILE\.local\bin"
-if (-not (Test-Path $InstallDir)) {
-    New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
-}
+# Determine install location
+INSTALL_DIR="${USERPROFILE}/.local/bin"
+if [ -z "$USERPROFILE" ]; then
+    INSTALL_DIR="${HOME}/.local/bin"
+fi
+mkdir -p "$INSTALL_DIR"
 
-$InstallPath = Join-Path $InstallDir $BinName
-Invoke-WebRequest -Uri $DownloadUrl -OutFile $InstallPath
+INSTALL_PATH="${INSTALL_DIR}/${BIN_NAME}"
+curl -fsSL "$LATEST_URL" -o "$INSTALL_PATH"
+chmod +x "$INSTALL_PATH"
 
-Write-Host "Installation complete! $InstallPath has been created."
-
-$UserPath = [Environment]::GetEnvironmentVariable("PATH", "User")
-if ($UserPath -notmatch [regex]::Escape($InstallDir)) {
-    Write-Host "Adding $InstallDir to your PATH..."
-    $NewPath = "$InstallDir;$UserPath"
-    [Environment]::SetEnvironmentVariable("PATH", $NewPath, "User")
-    $env:PATH = "$InstallDir;$env:PATH"
-    Write-Host "PATH updated. Please restart your terminal for it to take full effect."
-}
-
-Write-Host "Run 'nano-whale' to start."
+echo "Installation complete! ${INSTALL_PATH} has been created."
+echo "Make sure ${INSTALL_DIR} is in your PATH."
+echo "Run 'nano-whale' to start."

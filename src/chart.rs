@@ -78,11 +78,10 @@ fn resample(values: &[f64], width: usize) -> Vec<f64> {
     let mut out = Vec::with_capacity(width);
     for i in 0..width {
         let start = i * values.len() / width;
-        let end = ((i + 1) * values.len() / width).max(start + 1).min(values.len());
-        let bucket_max = values[start..end]
-            .iter()
-            .copied()
-            .fold(0.0_f64, f64::max);
+        let end = ((i + 1) * values.len() / width)
+            .max(start + 1)
+            .min(values.len());
+        let bucket_max = values[start..end].iter().copied().fold(0.0_f64, f64::max);
         out.push(bucket_max);
     }
     out
@@ -96,16 +95,22 @@ mod tests {
     fn fixed_scale_shows_low_cpu_not_flat_top() {
         let steady = vec![5.0, 5.1, 4.9, 5.0];
         let s = sparkline_percent(&steady, 4);
-        assert!(s.chars().all(|c| c == '▁' || c == '▂'),
+        assert!(
+            s.chars().all(|c| c == '▁' || c == '▂'),
             "steady ~5% should stay in lower blocks, got {}",
-            s);
+            s
+        );
     }
 
     #[test]
     fn resample_preserves_spike() {
         let data = vec![0.0, 0.0, 100.0, 0.0, 0.0];
         let series = percent_series(&data, 3);
-        assert!(series.contains(&100), "spike should survive downsampling: {:?}", series);
+        assert!(
+            series.contains(&100),
+            "spike should survive downsampling: {:?}",
+            series
+        );
     }
 
     #[test]

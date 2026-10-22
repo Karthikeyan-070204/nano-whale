@@ -38,7 +38,11 @@ pub fn spawn_workers(
     tx: EventTx,
     stats_target: Arc<RwLock<StatsTarget>>,
 ) {
-    tokio::spawn(poll_containers(docker.clone(), config.container_interval, tx.clone()));
+    tokio::spawn(poll_containers(
+        docker.clone(),
+        config.container_interval,
+        tx.clone(),
+    ));
     tokio::spawn(poll_misc(docker.clone(), config.misc_interval, tx.clone()));
     tokio::spawn(poll_stats(docker.clone(), config, tx, stats_target));
 }
@@ -73,40 +77,39 @@ async fn fetch_containers(docker: &Docker) -> anyhow::Result<Vec<ContainerRow>> 
         ..Default::default()
     });
     match docker.list_containers(opts).await {
-        Ok(list) => Ok(
-            list.into_iter()
-                .map(|c| {
-                    let name = c
-                        .names
-                        .and_then(|n| n.first().cloned())
-                        .map(|n| n.trim_start_matches('/').to_string())
-                        .unwrap_or_else(|| "unknown".into());
-                    let state = c.state.unwrap_or_else(|| "unknown".into());
-                    let id = c.id.unwrap_or_default();
-                    let image = c.image.unwrap_or_else(|| "N/A".into());
-                    let ports = c
-                        .ports
-                        .unwrap_or_default()
-                        .into_iter()
-                        .map(|p| {
-                            let pub_p = p
-                                .public_port
-                                .map(|pp| format!(":{}", pp))
-                                .unwrap_or_default();
-                            format!("{}{}", p.private_port, pub_p)
-                        })
-                        .collect::<Vec<_>>()
-                        .join(",");
-                    ContainerRow {
-                        id,
-                        name,
-                        state,
-                        image,
-                        ports,
-                    }
-                })
-                .collect(),
-        ),
+        Ok(list) => Ok(list
+            .into_iter()
+            .map(|c| {
+                let name = c
+                    .names
+                    .and_then(|n| n.first().cloned())
+                    .map(|n| n.trim_start_matches('/').to_string())
+                    .unwrap_or_else(|| "unknown".into());
+                let state = c.state.unwrap_or_else(|| "unknown".into());
+                let id = c.id.unwrap_or_default();
+                let image = c.image.unwrap_or_else(|| "N/A".into());
+                let ports = c
+                    .ports
+                    .unwrap_or_default()
+                    .into_iter()
+                    .map(|p| {
+                        let pub_p = p
+                            .public_port
+                            .map(|pp| format!(":{}", pp))
+                            .unwrap_or_default();
+                        format!("{}{}", p.private_port, pub_p)
+                    })
+                    .collect::<Vec<_>>()
+                    .join(",");
+                ContainerRow {
+                    id,
+                    name,
+                    state,
+                    image,
+                    ports,
+                }
+            })
+            .collect()),
         Err(e) => Err(e.into()),
     }
 }
@@ -164,7 +167,11 @@ async fn poll_misc(docker: Docker, every: Duration, tx: EventTx) {
                 .into_iter()
                 .map(|v| VolumeRow {
                     name: v.name,
-                    driver: if v.driver.is_empty() { "local".into() } else { v.driver },
+                    driver: if v.driver.is_empty() {
+                        "local".into()
+                    } else {
+                        v.driver
+                    },
                 })
                 .collect();
             let _ = tx.send(DockerEvent::Volumes(rows));
@@ -190,18 +197,17 @@ async fn poll_misc(docker: Docker, every: Duration, tx: EventTx) {
     }
 }
 
-async fn poll_stats(
-    docker: Docker,
-    config: Config,
-    tx: EventTx,
-    target: Arc<RwLock<StatsTarget>>,
-) {
+async fn poll_stats(docker: Docker, config: Config, tx: EventTx, target: Arc<RwLock<StatsTarget>>) {
     let mut tick = interval(config.stats_selective_interval);
     tick.set_missed_tick_behavior(MissedTickBehavior::Skip);
     loop {
         let (count, selected, names) = {
             let t = target.read().unwrap();
-            (t.container_count, t.selected_name.clone(), t.container_names.clone())
+            (
+                t.container_count,
+                t.selected_name.clone(),
+                t.container_names.clone(),
+            )
         };
         let selective = count > config.stats_all_container_max;
         let wait = if selective {
@@ -303,14 +309,7 @@ pub fn spawn_logs(
 
         for target in targets {
             if pull_logs_snapshot(
-                &docker,
-                &target,
-                &tail_s,
-                timestamps,
-                max_lines,
-                &container,
-                &tx,
-                &mut buf,
+                &docker, &target, &tail_s, timestamps, max_lines, &container, &tx, &mut buf,
             )
             .await
             {
@@ -545,7 +544,10 @@ async fn fetch_top(docker: &Docker, name: &str) -> anyhow::Result<String> {
 
 pub async fn container_start(docker: &Docker, name: &str) -> anyhow::Result<()> {
     docker
-        .start_container(name, None::<bollard::container::StartContainerOptions<String>>)
+        .start_container(
+            name,
+            None::<bollard::container::StartContainerOptions<String>>,
+        )
         .await?;
     Ok(())
 }

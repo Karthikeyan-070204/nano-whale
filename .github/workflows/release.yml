@@ -5,7 +5,18 @@ on:
     types: [closed]
     branches:
       - rust
+      - master
   workflow_dispatch:
+    inputs:
+      bump_type:
+        description: 'Version bump type (patch, minor, major)'
+        required: false
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
 
 permissions:
   contents: write
@@ -18,13 +29,14 @@ jobs:
       (github.event.pull_request.merged == true && !startsWith(github.event.pull_request.title, 'chore(release):'))
     outputs:
       new_version: ${{ steps.bump.outputs.NEW_VERSION }}
+      commit_sha: ${{ steps.bump.outputs.COMMIT_SHA }}
     permissions:
       contents: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          ref: rust
+          ref: ${{ github.event.pull_request.base.ref || github.ref_name }}
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
 
@@ -34,22 +46,56 @@ jobs:
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           
+          TARGET_BRANCH="${{ github.event.pull_request.base.ref || github.ref_name }}"
+          echo "Target branch is: $TARGET_BRANCH"
+          
           # Extract current version from Cargo.toml
-          current_version=$(grep -m 1 '^version = ' Cargo.toml | sed 's/version = "\(.*\)"/\1/')
+          current_version=$(python3 -c "
+          import re
+          with open('Cargo.toml') as f:
+              m = re.search(r'\[package\][\s\S]*?version\s*=\s*\"([^\"]+)\"', f.read())
+          print(m.group(1))
+          ")
           
-          # Increment the patch version
+          BUMP_TYPE="${{ github.event.inputs.bump_type || 'patch' }}"
           IFS='.' read -r major minor patch <<< "$current_version"
-          new_patch=$((patch + 1))
-          new_version="${major}.${minor}.${new_patch}"
           
-          echo "Bumping version from $current_version to $new_version"
-          sed -i "0,/version = \"$current_version\"/s//version = \"$new_version\"/" Cargo.toml
+          if [ "$BUMP_TYPE" = "major" ]; then
+            new_version="$((major + 1)).0.0"
+          elif [ "$BUMP_TYPE" = "minor" ]; then
+            new_version="${major}.$((minor + 1)).0"
+          else
+            new_version="${major}.${minor}.$((patch + 1))"
+          fi
           
-          git add Cargo.toml
+          echo "Bumping version from $current_version to $new_version ($BUMP_TYPE)"
+          
+          python3 -c "
+          import re, sys
+          with open('Cargo.toml', 'r') as f:
+              content = f.read()
+          new_v = sys.argv[1]
+          updated = re.sub(r'(\[package\][\s\S]*?version\s*=\s*\")[^\"]+(\")', r'\g<1>' + new_v + r'\2', content, count=1)
+          with open('Cargo.toml', 'w') as f:
+              f.write(updated)
+          " "$new_version"
+          
+          # Keep Cargo.lock in sync
+          cargo check --quiet 2>/dev/null || true
+          
+          git add Cargo.toml Cargo.lock
           git commit -m "chore(release): bump version to $new_version"
-          git push origin rust
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+          
+          if git push origin "$TARGET_BRANCH"; then
+            commit_sha=$(git rev-parse HEAD)
+          else
+            echo "::warning::Could not push Cargo.toml commit to $TARGET_BRANCH branch (check Workflow permissions or branch protection). Continuing with local commit."
+            commit_sha=$(git rev-parse HEAD)
+          fi
           
           echo "NEW_VERSION=$new_version" >> $GITHUB_OUTPUT
+          echo "COMMIT_SHA=$commit_sha" >> $GITHUB_OUTPUT
 
   build:
     name: Build for ${{ matrix.os }}
@@ -79,16 +125,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          ref: rust
+          ref: ${{ needs.bump_version.outputs.commit_sha || github.event.pull_request.base.ref || github.ref_name }}
+          fetch-depth: 0
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
-          
+
       - name: Build Target
         run: cargo build --release --target ${{ matrix.target }}
-        
+
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v4
         with:
@@ -106,18 +153,19 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: artifacts
-          
+
       - name: Prepare Assets
         run: |
           mkdir release_assets
           # Move all downloaded artifacts into the flat release_assets directory
           find artifacts -type f -exec mv {} release_assets/ \;
-          
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ needs.bump_version.outputs.new_version }}
           name: Release v${{ needs.bump_version.outputs.new_version }}
+          target_commitish: ${{ needs.bump_version.outputs.commit_sha }}
           files: release_assets/*
           generate_release_notes: true
         env:

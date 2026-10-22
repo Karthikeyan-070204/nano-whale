@@ -7,12 +7,12 @@ use ratatui::Frame;
 use crate::chart::{bar_symbols, percent_series, sparkline_percent, window_stats};
 use crate::config::Config;
 use crate::model::{AppState, ContentTab, PanelFocus};
+use crate::textutil::strip_ansi;
+use crate::theme::palette::*;
 use crate::theme::{
     chart_frame_block, content_block, cpu_color, empty_list_line, footer_lines, mem_color,
     panel_block, screen_style, selection_style, tab_bar_block, tab_label, zebra_bg, RowContext,
 };
-use crate::textutil::strip_ansi;
-use crate::theme::palette::*;
 
 pub fn draw(frame: &mut Frame, state: &mut AppState, config: &Config) {
     let area = frame.area();
@@ -95,10 +95,7 @@ pub fn draw(frame: &mut Frame, state: &mut AppState, config: &Config) {
 }
 
 fn draw_gutter(frame: &mut Frame, area: Rect) {
-    frame.render_widget(
-        Block::default().style(Style::default().bg(GUTTER)),
-        area,
-    );
+    frame.render_widget(Block::default().style(Style::default().bg(GUTTER)), area);
 }
 
 fn draw_top_bar(frame: &mut Frame, area: Rect, state: &AppState) {
@@ -240,10 +237,7 @@ fn resource_slots(area: Rect) -> [Rect; 7] {
 }
 
 fn draw_panel_gutter(frame: &mut Frame, area: Rect) {
-    frame.render_widget(
-        Paragraph::new("").style(Style::default().bg(GUTTER)),
-        area,
-    );
+    frame.render_widget(Paragraph::new("").style(Style::default().bg(GUTTER)), area);
 }
 
 fn draw_container_list(frame: &mut Frame, area: Rect, state: &AppState, config: &Config) {
@@ -269,76 +263,73 @@ fn draw_container_list(frame: &mut Frame, area: Rect, state: &AppState, config: 
     }
 
     items.extend(state.containers.iter().enumerate().map(|(i, c)| {
-            let row = RowContext {
-                selected: i == state.sel_container,
-                panel_focused: focused,
-            };
-            let marked = state.marked_containers.contains(&c.name);
-            let running = c.state == "running";
-            let (dot, status_style) = if running {
-                ("●", row.status_running(true))
-            } else {
-                ("○", row.muted_style())
-            };
-            let cpu_pct = if c.state == "running" {
-                if selective && i != state.sel_container {
-                    None
-                } else {
-                    Some(
-                        state
-                            .stats
-                            .get(&c.name)
-                            .map(|s| s.cpu_percent)
-                            .unwrap_or(0.0),
-                    )
-                }
-            } else {
+        let row = RowContext {
+            selected: i == state.sel_container,
+            panel_focused: focused,
+        };
+        let marked = state.marked_containers.contains(&c.name);
+        let running = c.state == "running";
+        let (dot, status_style) = if running {
+            ("●", row.status_running(true))
+        } else {
+            ("○", row.muted_style())
+        };
+        let cpu_pct = if c.state == "running" {
+            if selective && i != state.sel_container {
                 None
-            };
-            let name = truncate(&c.name, 16);
-            let tail = if c.ports.is_empty() {
-                truncate(&c.image, 10)
             } else {
-                truncate(&c.ports, 10)
-            };
-
-            let mut spans = vec![
-                Span::styled(if marked { "◆ " } else { "  " }, row.mark_style(marked)),
-                Span::styled(format!("{} ", dot), status_style),
-                Span::styled(format!("{:<16} ", name), row.name_style()),
-            ];
-            if let Some(pct) = cpu_pct {
-                spans.push(Span::styled(
-                    format!("{:>5.1}% ", pct),
-                    row.cpu_style(pct),
-                ));
-            } else {
-                spans.push(Span::styled("   —   ", row.muted_style()));
+                Some(
+                    state
+                        .stats
+                        .get(&c.name)
+                        .map(|s| s.cpu_percent)
+                        .unwrap_or(0.0),
+                )
             }
-            spans.push(Span::styled(tail, row.muted_style()));
+        } else {
+            None
+        };
+        let name = truncate(&c.name, 16);
+        let tail = if c.ports.is_empty() {
+            truncate(&c.image, 10)
+        } else {
+            truncate(&c.ports, 10)
+        };
 
-            if row.selected && running && list_w >= 70 {
-                if let Some(hist) = state.cpu_history.get(&c.name) {
-                    let mini = sparkline_percent(hist, 8);
-                    if !mini.is_empty() {
-                        let pct = state
-                            .stats
-                            .get(&c.name)
-                            .map(|s| s.cpu_percent)
-                            .unwrap_or(0.0);
-                        spans.push(Span::raw(" "));
-                        spans.push(Span::styled(mini, row.cpu_style(pct)));
-                    }
+        let mut spans = vec![
+            Span::styled(if marked { "◆ " } else { "  " }, row.mark_style(marked)),
+            Span::styled(format!("{} ", dot), status_style),
+            Span::styled(format!("{:<16} ", name), row.name_style()),
+        ];
+        if let Some(pct) = cpu_pct {
+            spans.push(Span::styled(format!("{:>5.1}% ", pct), row.cpu_style(pct)));
+        } else {
+            spans.push(Span::styled("   —   ", row.muted_style()));
+        }
+        spans.push(Span::styled(tail, row.muted_style()));
+
+        if row.selected && running && list_w >= 70 {
+            if let Some(hist) = state.cpu_history.get(&c.name) {
+                let mini = sparkline_percent(hist, 8);
+                if !mini.is_empty() {
+                    let pct = state
+                        .stats
+                        .get(&c.name)
+                        .map(|s| s.cpu_percent)
+                        .unwrap_or(0.0);
+                    spans.push(Span::raw(" "));
+                    spans.push(Span::styled(mini, row.cpu_style(pct)));
                 }
             }
+        }
 
-            let style = if row.selected {
-                selection_style(focused)
-            } else {
-                Style::default().bg(zebra_bg(i))
-            };
-            ListItem::new(Line::from(fit_spans_width(spans, list_w.saturating_sub(1)))).style(style)
-        }));
+        let style = if row.selected {
+            selection_style(focused)
+        } else {
+            Style::default().bg(zebra_bg(i))
+        };
+        ListItem::new(Line::from(fit_spans_width(spans, list_w.saturating_sub(1)))).style(style)
+    }));
 
     frame.render_widget(
         Paragraph::new(Line::from(Span::styled(
@@ -367,7 +358,10 @@ fn draw_image_list(frame: &mut Frame, area: Rect, state: &AppState) {
             panel_focused: focused,
         };
         let marked = state.marked_images.contains(&img.id);
-        let label = truncate(&format!("{}:{}", img.repo, img.tag), list_w.saturating_sub(10));
+        let label = truncate(
+            &format!("{}:{}", img.repo, img.tag),
+            list_w.saturating_sub(10),
+        );
         let spans = vec![
             Span::styled(if marked { "◆ " } else { "  " }, row.mark_style(marked)),
             Span::styled(format!("{label} "), row.name_style()),
@@ -418,7 +412,12 @@ fn draw_network_list(frame: &mut Frame, area: Rect, state: &AppState) {
         collected.push(ListItem::new(empty_list_line("No networks")));
     }
     let title = format!("Networks · {}", state.networks.len());
-    let block = panel_block(&title, NETWORKS, focused, Some(PanelFocus::Networks.hotkey()));
+    let block = panel_block(
+        &title,
+        NETWORKS,
+        focused,
+        Some(PanelFocus::Networks.hotkey()),
+    );
     let inner = block.inner(area);
     let list_w = inner.width.max(1) as usize;
     collected.extend(state.networks.iter().enumerate().map(|(i, n)| {
@@ -487,10 +486,7 @@ fn draw_right(frame: &mut Frame, area: Rect, state: &mut AppState, config: &Conf
         })
         .collect::<Vec<_>>(),
     );
-    frame.render_widget(
-        Paragraph::new(tab_line).block(tab_bar_block()),
-        chunks[0],
-    );
+    frame.render_widget(Paragraph::new(tab_line).block(tab_bar_block()), chunks[0]);
 
     let pane_title = truncate(
         &content_pane_title(state),
@@ -578,9 +574,8 @@ fn draw_stats_tab(
     let c = state.selected_container();
     if c.is_none() {
         frame.render_widget(
-            Paragraph::new("Select a container to view stats").style(
-                Style::default().fg(MUTED).add_modifier(Modifier::ITALIC),
-            ),
+            Paragraph::new("Select a container to view stats")
+                .style(Style::default().fg(MUTED).add_modifier(Modifier::ITALIC)),
             inner,
         );
         return;
@@ -593,7 +588,10 @@ fn draw_stats_tab(
                 Style::default().fg(ACCENT2).add_modifier(Modifier::BOLD),
             )),
             Line::from(""),
-            Line::from(Span::styled("Container is not running", Style::default().fg(WARN))),
+            Line::from(Span::styled(
+                "Container is not running",
+                Style::default().fg(WARN),
+            )),
             Line::from(Span::styled("Press s to start", Style::default().fg(MUTED))),
         ];
         frame.render_widget(Paragraph::new(lines), inner);
@@ -601,8 +599,16 @@ fn draw_stats_tab(
     }
 
     let snap = state.stats.get(&c.name);
-    let cpu_hist = state.cpu_history.get(&c.name).map(|v| v.as_slice()).unwrap_or(&[]);
-    let mem_hist = state.mem_history.get(&c.name).map(|v| v.as_slice()).unwrap_or(&[]);
+    let cpu_hist = state
+        .cpu_history
+        .get(&c.name)
+        .map(|v| v.as_slice())
+        .unwrap_or(&[]);
+    let mem_hist = state
+        .mem_history
+        .get(&c.name)
+        .map(|v| v.as_slice())
+        .unwrap_or(&[]);
     let cpu = snap.map(|s| s.cpu_percent).unwrap_or(0.0);
     let mem = snap.map(|s| s.mem_percent).unwrap_or(0.0);
 
@@ -653,10 +659,15 @@ fn draw_stats_tab(
 
     frame.render_widget(
         Paragraph::new(Line::from(vec![
-            Span::styled("CPU ", Style::default().fg(ACCENT).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                "CPU ",
+                Style::default().fg(ACCENT).add_modifier(Modifier::BOLD),
+            ),
             Span::styled(
                 format!("{:.1}%", cpu),
-                Style::default().fg(cpu_color(cpu)).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(cpu_color(cpu))
+                    .add_modifier(Modifier::BOLD),
             ),
             Span::styled(
                 format!("   window {:.1}% – {:.1}%", cpu_min, cpu_max),
@@ -673,17 +684,26 @@ fn draw_stats_tab(
         .data(&cpu_data)
         .max(100)
         .bar_set(bar_symbols())
-        .style(Style::default().fg(cpu_color(cpu)).bg(Color::Rgb(18, 26, 42)));
+        .style(
+            Style::default()
+                .fg(cpu_color(cpu))
+                .bg(Color::Rgb(18, 26, 42)),
+        );
     frame.render_widget(cpu_chart, cpu_inner);
 
     frame.render_widget(Paragraph::new(scale_axis_line(layout[3].width)), layout[3]);
 
     frame.render_widget(
         Paragraph::new(Line::from(vec![
-            Span::styled("MEM ", Style::default().fg(ACCENT).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                "MEM ",
+                Style::default().fg(ACCENT).add_modifier(Modifier::BOLD),
+            ),
             Span::styled(
                 format!("{:.1}%", mem),
-                Style::default().fg(mem_color(mem)).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(mem_color(mem))
+                    .add_modifier(Modifier::BOLD),
             ),
             Span::styled(
                 format!(
@@ -705,26 +725,29 @@ fn draw_stats_tab(
         .data(&mem_data)
         .max(100)
         .bar_set(bar_symbols())
-        .style(Style::default().fg(mem_color(mem)).bg(Color::Rgb(18, 26, 42)));
+        .style(
+            Style::default()
+                .fg(mem_color(mem))
+                .bg(Color::Rgb(18, 26, 42)),
+        );
     frame.render_widget(mem_chart, mem_inner);
 
     frame.render_widget(Paragraph::new(scale_axis_line(layout[6].width)), layout[6]);
 
-    let mut footer = vec![
-        Line::from(vec![
-            Span::styled("PIDs    ", Style::default().fg(MUTED)),
-            Span::styled(
-                snap.map(|s| s.pids.clone()).unwrap_or_else(|| "N/A".into()),
-                Style::default().fg(TEXT),
-            ),
-            Span::styled("   │   ", Style::default().fg(BORDER)),
-            Span::styled("Net I/O ", Style::default().fg(MUTED)),
-            Span::styled(
-                snap.map(|s| s.net_io.clone()).unwrap_or_else(|| "N/A".into()),
-                Style::default().fg(TEXT),
-            ),
-        ]),
-    ];
+    let mut footer = vec![Line::from(vec![
+        Span::styled("PIDs    ", Style::default().fg(MUTED)),
+        Span::styled(
+            snap.map(|s| s.pids.clone()).unwrap_or_else(|| "N/A".into()),
+            Style::default().fg(TEXT),
+        ),
+        Span::styled("   │   ", Style::default().fg(BORDER)),
+        Span::styled("Net I/O ", Style::default().fg(MUTED)),
+        Span::styled(
+            snap.map(|s| s.net_io.clone())
+                .unwrap_or_else(|| "N/A".into()),
+            Style::default().fg(TEXT),
+        ),
+    ])];
     let block_io = snap.map(|s| s.block_io.as_str()).unwrap_or("N/A");
     if block_io != "N/A" {
         footer.push(Line::from(vec![
@@ -944,9 +967,10 @@ fn fit_spans_width(spans: Vec<Span<'_>>, max: usize) -> Vec<Span<'_>> {
     while spans_width(&out) > max && out.len() > 1 {
         out.pop();
     }
-    if spans_width(&out) > max {
+    let total_width = spans_width(&out);
+    if total_width > max {
         if let Some(last) = out.last_mut() {
-            let overflow = spans_width(&out) - max;
+            let overflow = total_width - max;
             let n = last.content.chars().count();
             if n > overflow {
                 let trimmed: String = last.content.chars().take(n - overflow).collect();

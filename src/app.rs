@@ -1,5 +1,3 @@
-use std::io::Write;
-use std::process::{Command, Stdio};
 use std::sync::{Arc, RwLock};
 
 use bollard::Docker;
@@ -107,10 +105,7 @@ impl App {
                 }
             }
             DockerEvent::Logs { container, chunk } => {
-                let selected = self
-                    .state
-                    .selected_container()
-                    .map(|c| c.name.clone());
+                let selected = self.state.selected_container().map(|c| c.name.clone());
                 if selected.as_deref() == Some(container.as_str())
                     || self.state.logs_container.as_deref() == Some(container.as_str())
                 {
@@ -120,7 +115,11 @@ impl App {
                     }
                 }
             }
-            DockerEvent::InspectDetail { tab, container, text } => {
+            DockerEvent::InspectDetail {
+                tab,
+                container,
+                text,
+            } => {
                 let key = AppState::inspect_cache_key(tab, &container);
                 self.state.inspect_cache.insert(key, text.clone());
                 if self.state.detail_for.as_deref() == Some(container.as_str()) {
@@ -303,7 +302,8 @@ impl App {
                 }
             }
             KeyCode::F(5) => {
-                self.state.set_notify("Lists refresh automatically in background", false);
+                self.state
+                    .set_notify("Lists refresh automatically in background", false);
             }
             _ => {}
         }
@@ -321,10 +321,7 @@ impl App {
             self.state.logs_auto_scroll = false;
         }
         if delta < 0 {
-            self.state.content_scroll = self
-                .state
-                .content_scroll
-                .saturating_sub((-delta) as u16);
+            self.state.content_scroll = self.state.content_scroll.saturating_sub((-delta) as u16);
         } else {
             self.state.content_scroll = self.state.content_scroll.saturating_add(delta as u16);
         }
@@ -358,10 +355,14 @@ impl App {
                     self.state.selecting = false;
                 }
             }
-            MouseEventKind::Drag(MouseButton::Left) if self.state.select_mode && self.state.selecting => {
+            MouseEventKind::Drag(MouseButton::Left)
+                if self.state.select_mode && self.state.selecting =>
+            {
                 self.drag_select(column, row);
             }
-            MouseEventKind::Up(MouseButton::Left) if self.state.select_mode && self.state.selecting => {
+            MouseEventKind::Up(MouseButton::Left)
+                if self.state.select_mode && self.state.selecting =>
+            {
                 self.state.selecting = false;
                 self.copy_selection();
             }
@@ -385,10 +386,7 @@ impl App {
         if self.state.tab == ContentTab::Logs {
             self.scroll_logs(delta);
         } else if delta < 0 {
-            self.state.content_scroll = self
-                .state
-                .content_scroll
-                .saturating_sub((-delta) as u16);
+            self.state.content_scroll = self.state.content_scroll.saturating_sub((-delta) as u16);
         } else {
             self.state.content_scroll = self.state.content_scroll.saturating_add(delta as u16);
         }
@@ -479,7 +477,10 @@ impl App {
         let text = lines[start..=end].join("\n");
         if copy_to_clipboard(&text) {
             let n = end - start + 1;
-            self.state.set_notify(format!("Copied {n} line{}", if n == 1 { "" } else { "s" }), false);
+            self.state.set_notify(
+                format!("Copied {n} line{}", if n == 1 { "" } else { "s" }),
+                false,
+            );
         } else {
             self.state.set_notify("Could not copy to clipboard", true);
         }
@@ -499,7 +500,8 @@ impl App {
         let Some((x, y, w, h)) = self.state.right_pane else {
             return;
         };
-        let inside = column >= x && column < x.saturating_add(w) && row >= y && row < y.saturating_add(h);
+        let inside =
+            column >= x && column < x.saturating_add(w) && row >= y && row < y.saturating_add(h);
         if !inside || self.state.tab != ContentTab::Logs {
             return;
         }
@@ -556,10 +558,15 @@ impl App {
                 self.state.logs_auto_scroll = false;
                 self.state.content_scroll = i as u16;
                 self.state.find_at = Some(i);
-                self.state.set_notify(format!("Match · line {}", i + 1), false);
+                self.state
+                    .set_notify(format!("Match · line {}", i + 1), false);
                 return;
             }
-            i = if forward { (i + 1) % n } else { (i + n - 1) % n };
+            i = if forward {
+                (i + 1) % n
+            } else {
+                (i + n - 1) % n
+            };
         }
         self.state.set_notify(format!("No match for {query}"), true);
     }
@@ -604,7 +611,9 @@ impl App {
             self.state.logs_container = None;
         }
         match self.state.focus {
-            PanelFocus::Containers if self.state.sel_container + 1 < self.state.containers.len() => {
+            PanelFocus::Containers
+                if self.state.sel_container + 1 < self.state.containers.len() =>
+            {
                 self.state.sel_container += 1;
             }
             PanelFocus::Images if self.state.sel_image + 1 < self.state.images.len() => {
@@ -680,7 +689,12 @@ impl App {
                 }
             }
             PanelFocus::Images => {
-                if let Some(id) = self.state.images.get(self.state.sel_image).map(|i| i.id.clone()) {
+                if let Some(id) = self
+                    .state
+                    .images
+                    .get(self.state.sel_image)
+                    .map(|i| i.id.clone())
+                {
                     tokio::spawn(async move {
                         let res = image_remove(&docker, &id).await;
                         let is_error = res.is_err();
@@ -693,7 +707,12 @@ impl App {
                 }
             }
             PanelFocus::Volumes => {
-                if let Some(name) = self.state.volumes.get(self.state.sel_volume).map(|v| v.name.clone()) {
+                if let Some(name) = self
+                    .state
+                    .volumes
+                    .get(self.state.sel_volume)
+                    .map(|v| v.name.clone())
+                {
                     tokio::spawn(async move {
                         let res = volume_remove(&docker, &name).await;
                         let is_error = res.is_err();
@@ -706,7 +725,12 @@ impl App {
                 }
             }
             PanelFocus::Networks => {
-                if let Some(name) = self.state.networks.get(self.state.sel_network).map(|n| n.name.clone()) {
+                if let Some(name) = self
+                    .state
+                    .networks
+                    .get(self.state.sel_network)
+                    .map(|n| n.name.clone())
+                {
                     tokio::spawn(async move {
                         let res = network_remove(&docker, &name).await;
                         let is_error = res.is_err();
@@ -733,7 +757,12 @@ impl App {
                 }
             }
             PanelFocus::Images => {
-                if let Some(id) = self.state.images.get(self.state.sel_image).map(|i| i.id.clone()) {
+                if let Some(id) = self
+                    .state
+                    .images
+                    .get(self.state.sel_image)
+                    .map(|i| i.id.clone())
+                {
                     if self.state.marked_images.contains(&id) {
                         self.state.marked_images.remove(&id);
                     } else {
@@ -742,7 +771,12 @@ impl App {
                 }
             }
             PanelFocus::Volumes => {
-                if let Some(name) = self.state.volumes.get(self.state.sel_volume).map(|v| v.name.clone()) {
+                if let Some(name) = self
+                    .state
+                    .volumes
+                    .get(self.state.sel_volume)
+                    .map(|v| v.name.clone())
+                {
                     if self.state.marked_volumes.contains(&name) {
                         self.state.marked_volumes.remove(&name);
                     } else {

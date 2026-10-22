@@ -4,9 +4,9 @@ mod config;
 mod docker;
 mod model;
 mod stats_parse;
-mod theme;
 mod term_logs;
 mod textutil;
+mod theme;
 mod ui;
 
 use std::io::stdout;
@@ -31,7 +31,7 @@ use app::App;
 use config::Config;
 use docker::{connect, spawn_workers};
 
-const VERSION: &str = "2.0.0";
+const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[derive(Parser, Debug)]
 #[command(name = "nano-whale", version = VERSION, about = "Lightweight Docker TUI")]
@@ -139,7 +139,12 @@ async fn main() -> anyhow::Result<()> {
 
     let (tx, mut rx) = mpsc::unbounded_channel();
     let mut app = App::new(docker.clone(), config.clone(), hostname);
-    spawn_workers(docker.clone(), config.clone(), tx.clone(), app.stats_target.clone());
+    spawn_workers(
+        docker.clone(),
+        config.clone(),
+        tx.clone(),
+        app.stats_target.clone(),
+    );
     app.sync_stats_target();
     app.bootstrap_streams(&tx);
 
@@ -157,7 +162,12 @@ async fn main() -> anyhow::Result<()> {
     while !app.state.quit {
         app.drain_events(&mut rx, &tx);
 
-        if app.state.notify.as_ref().is_some_and(|n| Instant::now() >= n.until) {
+        if app
+            .state
+            .notify
+            .as_ref()
+            .is_some_and(|n| Instant::now() >= n.until)
+        {
             app.state.notify = None;
             app.state.mark_dirty();
         }
