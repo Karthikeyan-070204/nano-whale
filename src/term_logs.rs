@@ -8,7 +8,7 @@ use anyhow::Context;
 use crossterm::cursor::{Hide, MoveTo, Show};
 use crossterm::event::{self, Event, KeyCode, KeyEventKind, MouseEventKind};
 use crossterm::style::Print;
-use crossterm::terminal::{self, Clear, ClearType, disable_raw_mode, enable_raw_mode};
+use crossterm::terminal::{self, disable_raw_mode, enable_raw_mode, Clear, ClearType};
 use crossterm::{queue, ExecutableCommand};
 
 use crate::textutil::strip_ansi;
@@ -76,15 +76,7 @@ pub fn run(name: &str, tail: usize) -> anyhow::Result<()> {
         }
 
         if dirty {
-            draw(
-                &mut stdout,
-                name,
-                &lines,
-                follow,
-                offset,
-                &query,
-                editing,
-            )?;
+            draw(&mut stdout, name, &lines, follow, offset, &query, editing)?;
             dirty = false;
         }
 
@@ -149,7 +141,14 @@ pub fn run(name: &str, tail: usize) -> anyhow::Result<()> {
                 jump_find(&lines, &query, true, &mut find_at, &mut offset, &mut follow);
             }
             KeyCode::Char('N') => {
-                jump_find(&lines, &query, false, &mut find_at, &mut offset, &mut follow);
+                jump_find(
+                    &lines,
+                    &query,
+                    false,
+                    &mut find_at,
+                    &mut offset,
+                    &mut follow,
+                );
             }
             KeyCode::Esc => {
                 query.clear();
@@ -207,7 +206,9 @@ fn leave_follow(lines: &[String], follow: &mut bool, offset: &mut usize) {
 }
 
 fn view_rows() -> usize {
-    terminal::size().map(|(_, rows)| rows.saturating_sub(2) as usize).unwrap_or(20)
+    terminal::size()
+        .map(|(_, rows)| rows.saturating_sub(2) as usize)
+        .unwrap_or(20)
 }
 
 fn jump_find(
@@ -236,7 +237,11 @@ fn jump_find(
             *find_at = Some(i);
             return;
         }
-        i = if forward { (i + 1) % n } else { (i + n - 1) % n };
+        i = if forward {
+            (i + 1) % n
+        } else {
+            (i + n - 1) % n
+        };
     }
 }
 

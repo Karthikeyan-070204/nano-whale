@@ -125,9 +125,19 @@ pub enum DockerEvent {
     Volumes(Vec<VolumeRow>),
     Networks(Vec<NetworkRow>),
     Stats(HashMap<String, StatsSnapshot>),
-    Logs { container: String, chunk: String },
-    InspectDetail { tab: ContentTab, container: String, text: String },
-    Notify { message: String, is_error: bool },
+    Logs {
+        container: String,
+        chunk: String,
+    },
+    InspectDetail {
+        tab: ContentTab,
+        container: String,
+        text: String,
+    },
+    Notify {
+        message: String,
+        is_error: bool,
+    },
 }
 
 #[derive(Debug)]

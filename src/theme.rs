@@ -38,12 +38,13 @@ pub fn screen_style() -> Style {
     Style::default().bg(BG).fg(TEXT)
 }
 
-pub fn panel_block<'a>(title: &'a str, accent: Color, focused: bool, hotkey: Option<char>) -> Block<'a> {
-    let border = if focused {
-        BORDER_BRIGHT
-    } else {
-        accent
-    };
+pub fn panel_block<'a>(
+    title: &'a str,
+    accent: Color,
+    focused: bool,
+    hotkey: Option<char>,
+) -> Block<'a> {
+    let border = if focused { BORDER_BRIGHT } else { accent };
     let title_text = if let Some(k) = hotkey {
         format!(" [{}] {} ", k, title)
     } else {
@@ -109,9 +110,7 @@ pub fn selection_style(focused: bool) -> Style {
             .fg(TEXT)
             .add_modifier(Modifier::BOLD)
     } else {
-        Style::default()
-            .bg(SELECT_BG_DIM)
-            .fg(TEXT)
+        Style::default().bg(SELECT_BG_DIM).fg(TEXT)
     }
 }
 
@@ -265,10 +264,7 @@ pub fn footer_lines(
             Style::default().fg(WHALE).add_modifier(Modifier::BOLD),
         ),
         Span::styled("│", Style::default().fg(BORDER)),
-        Span::styled(
-            format!(" {focus_label} "),
-            Style::default().fg(CONTAINERS),
-        ),
+        Span::styled(format!(" {focus_label} "), Style::default().fg(CONTAINERS)),
         Span::styled("│", Style::default().fg(BORDER)),
         Span::styled(
             format!(" {tab_glyph} {tab_title} "),
@@ -312,10 +308,7 @@ pub fn tab_label(glyph: &str, tab: &str, active: bool) -> Span<'static> {
                 .add_modifier(Modifier::BOLD),
         )
     } else {
-        Span::styled(
-            format!(" {} {} ", glyph, tab),
-            Style::default().fg(MUTED),
-        )
+        Span::styled(format!(" {} {} ", glyph, tab), Style::default().fg(MUTED))
     }
 }
 

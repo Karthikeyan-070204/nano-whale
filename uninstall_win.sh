@@ -1,12 +1,17 @@
-$ErrorActionPreference = "Stop"
-$BinName = "nano-whale.exe"
-$InstallDir = "$env:USERPROFILE\.local\bin"
-$InstallPath = Join-Path $InstallDir $BinName
+#!/bin/sh
+set -e
 
-if (Test-Path $InstallPath) {
-    Write-Host "Removing $InstallPath..."
-    Remove-Item -Path $InstallPath -Force
-    Write-Host "nano-whale has been successfully uninstalled."
-} else {
-    Write-Host "nano-whale is not installed in $InstallDir."
-}
+BIN_NAME="nano-whale.exe"
+INSTALL_DIR="${USERPROFILE}/.local/bin"
+if [ -z "$USERPROFILE" ]; then
+    INSTALL_DIR="${HOME}/.local/bin"
+fi
+INSTALL_PATH="${INSTALL_DIR}/${BIN_NAME}"
+
+if [ -f "$INSTALL_PATH" ]; then
+    echo "Removing ${INSTALL_PATH}..."
+    rm -f "$INSTALL_PATH"
+    echo "nano-whale has been successfully uninstalled."
+else
+    echo "nano-whale is not installed in ${INSTALL_DIR}."
+fi
