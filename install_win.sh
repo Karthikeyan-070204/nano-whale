@@ -40,13 +40,36 @@ if (-not $Asset) {
     exit 1
 }
 
-$InstallDir = "$env:USERPROFILE\.local\bin"
-if (-not (Test-Path $InstallDir)) {
-    New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
+# Determine install location with automatic fallback if .local\bin is locked
+$CandidateDirs = @(
+    "$env:USERPROFILE\.local\bin",
+    "$env:USERPROFILE\.cargo\bin",
+    "$env:USERPROFILE\bin"
+)
+
+$InstallDir = $null
+foreach ($dir in $CandidateDirs) {
+    if (-not (Test-Path $dir)) {
+        try { New-Item -ItemType Directory -Force -Path $dir | Out-Null } catch { continue }
+    }
+    # Test if directory is writable and not locked
+    $testPath = Join-Path $dir "nw_probe_$([Guid]::NewGuid().ToString('N')).tmp"
+    try {
+        [System.IO.File]::WriteAllBytes($testPath, @())
+        Remove-Item $testPath -Force -ErrorAction SilentlyContinue
+        $InstallDir = $dir
+        break
+    } catch {
+        continue
+    }
+}
+
+if (-not $InstallDir) {
+    $InstallDir = "$env:USERPROFILE\.local\bin"
 }
 
 $InstallPath = Join-Path $InstallDir $BinName
-$TempPath = Join-Path $InstallDir "$BinName.tmp"
+$TempPath = Join-Path $env:TEMP "$BinName.tmp"
 
 # Stop any running instance of nano-whale to release file lock
 $running = Get-Process -Name "nano-whale" -ErrorAction SilentlyContinue
@@ -78,19 +101,41 @@ try {
     $ProgressPreference = $origProgress
 }
 
-# Replace target binary safely
-if (Test-Path $InstallPath) {
-    try {
+# Replace target binary safely, falling back to .cargo\bin if .local\bin target is locked
+$installed = $false
+try {
+    if (Test-Path $InstallPath) {
         Remove-Item -Path $InstallPath -Force -ErrorAction Stop
-    } catch {
-        $oldPath = Join-Path $InstallDir "$BinName.old"
-        Remove-Item -Path $oldPath -Force -ErrorAction SilentlyContinue
-        Move-Item -Path $InstallPath -Destination $oldPath -Force -ErrorAction SilentlyContinue
+    }
+    Move-Item -Path $TempPath -Destination $InstallPath -Force -ErrorAction Stop
+    $installed = $true
+} catch {
+    # If the specific file is locked in .local\bin (e.g. antivirus quarantine), use .cargo\bin or ~/bin
+    $fallbackDirs = @("$env:USERPROFILE\.cargo\bin", "$env:USERPROFILE\bin")
+    foreach ($fb in $fallbackDirs) {
+        if (-not (Test-Path $fb)) {
+            New-Item -ItemType Directory -Force -Path $fb | Out-Null
+        }
+        $fbPath = Join-Path $fb $BinName
+        try {
+            if (Test-Path $fbPath) { Remove-Item -Path $fbPath -Force -ErrorAction SilentlyContinue }
+            Move-Item -Path $TempPath -Destination $fbPath -Force -ErrorAction Stop
+            $InstallDir = $fb
+            $InstallPath = $fbPath
+            $installed = $true
+            break
+        } catch {
+            continue
+        }
     }
 }
 
-Move-Item -Path $TempPath -Destination $InstallPath -Force
-Remove-Item -Path "$InstallPath.old" -Force -ErrorAction SilentlyContinue
+if (-not $installed) {
+    Write-Error "Failed to install $BinName to $InstallDir. Please check folder permissions or antivirus exclusions."
+    exit 1
+}
+
+Remove-Item -Path $TempPath -Force -ErrorAction SilentlyContinue
 
 Write-Host "Installation complete! $InstallPath has been created."
 
